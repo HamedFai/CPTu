@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>CPTu 7th Ed Professional Analyzer</title>
+    <title>CPTu Marine Sediment Analysis</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.31.0/build/stlite.css" />
   </head>
   <body>
@@ -20,21 +20,18 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import os
 
 def get_sbt_7th_ed(rf, qc_mpa):
-    """SBT Classification based on Robertson & Cabal (2022) 7th Ed."""
     try:
         if qc_mpa <= 0.001: return "Unknown", "#FFFFFF"
-        # Atmospheric pressure (pa) = 0.1 MPa
         pa = 0.1
-        # Ic = ((3.47 - log10(qc/pa))^2 + (log10(Rf) + 1.22)^2)^0.5
         ic = ((3.47 - np.log10(qc_mpa/pa))**2 + (np.log10(rf) + 1.22)**2)**0.5
-        
         if ic > 3.60: return "Organic Soils - Peat", "#964B00"
         if ic > 2.95: return "Clays - Silty Clay to Clay", "#FF0000"
-        if ic > 2.60: return "Silt Mixtures - Clayey Silt to Silty Clay", "#FFFF00"
-        if ic > 2.05: return "Sand Mixtures - Silty Sand to Sandy Silt", "#90EE90"
-        if ic > 1.31: return "Sands - Clean Sand to Silty Sand", "#008000"
+        if ic > 2.60: return "Silt Mixtures", "#FFFF00"
+        if ic > 2.05: return "Sand Mixtures", "#90EE90"
+        if ic > 1.31: return "Sands", "#008000"
         return "Gravelly Sand to Dense Sand", "#006400"
     except:
         return "Sensitive Fine-Grained", "#E6E6FA"
@@ -54,41 +51,50 @@ def parse_cpt(content):
             except: continue
     df = pd.DataFrame(data)
     if not df.empty:
-        # Standard Calculations
         df['Rf'] = (df['FS'] / (df['QC'] * 1000)) * 100
         u0 = df['D'] * 9.81
         df['Bq'] = (df['U'] - u0) / (df['QC'] * 1000 - u0)
-        
-        # 7th Ed SBT Mapping
         sbt_results = [get_sbt_7th_ed(r, q) for r, q in zip(df['Rf'], df['QC'])]
         df['SBT_Label'] = [x[0] for x in sbt_results]
         df['SBT_Color'] = [x[1] for x in sbt_results]
     return df
 
 st.set_page_config(layout="wide")
-st.markdown("<style>#MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>", unsafe_allow_html=True)
+st.markdown("<style>#MainMenu {visibility: hidden;} footer {visibility: hidden;} .stApp {background-color: white;}</style>", unsafe_allow_html=True)
 
-st.title("CPTu Profiles (based on CPT Guide (7th edition))")
+st.title("Quantitative Analysis and Stratigraphic Profiling of Marine Sediments using Piezocone Penetration Test (CPTu) Data")
 
-uploaded_file = st.file_uploader("Upload .cpt file", type=['cpt', 'txt'])
+st.markdown("""
+### Background and Methodology
+This analytical tool facilitates the interpretation of Piezocone Penetration Test (CPTu) data within marine geological contexts. 
+The stratigraphic classification follows the **Robertson & Cabal (2022) 7th Edition CPT Guide**, utilizing the non-normalized 
+Soil Behavior Type Index ($I_c$).
+""")
+
+uploaded_file = st.file_uploader("Select CPT Data File (.cpt, .txt)", type=['cpt', 'txt'])
 
 if uploaded_file:
+    # Extract Location ID from filename (removing extension)
+    location_id = os.path.splitext(uploaded_file.name)[0]
+    
     df = parse_cpt(uploaded_file.getvalue().decode('utf-8', errors='ignore'))
+    
     if not df.empty:
+        # Display Location ID prominently
+        st.markdown(f"## Location ID: {location_id}")
+        
         fig = make_subplots(rows=1, cols=6, shared_yaxes=True, 
-                            horizontal_spacing=0.015,
-                            column_widths=[0.17, 0.17, 0.17, 0.12, 0.12, 0.08])
+                            horizontal_spacing=0.012,
+                            column_widths=[0.17, 0.17, 0.17, 0.13, 0.13, 0.08])
         
         depth = df['D'].tolist()
         
-        # Trace Definitions
         fig.add_trace(go.Scatter(x=df['QC'].tolist(), y=depth, name='qc', line=dict(color='black', width=1)), row=1, col=1)
         fig.add_trace(go.Scatter(x=df['FS'].tolist(), y=depth, name='fs', line=dict(color='black', width=1)), row=1, col=2)
         fig.add_trace(go.Scatter(x=df['U'].tolist(), y=depth, name='u2', line=dict(color='black', width=1)), row=1, col=3)
         fig.add_trace(go.Scatter(x=df['Rf'].tolist(), y=depth, name='Rf', line=dict(color='black', width=1)), row=1, col=4)
         fig.add_trace(go.Scatter(x=df['Bq'].tolist(), y=depth, name='Bq', line=dict(color='black', width=1)), row=1, col=5)
         
-        # SBT Column Logic
         for i in range(len(df)-1):
             fig.add_shape(type="rect", x0=0, x1=1, y0=df['D'].iloc[i], y1=df['D'].iloc[i+1],
                           fillcolor=df['SBT_Color'].iloc[i], line_width=0, row=1, col=6)
@@ -99,37 +105,43 @@ if uploaded_file:
             ("u<sub>2</sub> (kPa)", [0, max(df['U'])*1.2]),
             ("R<sub>f</sub> (%)", [0, 8]),
             ("B<sub>q</sub>", [-0.2, 1.2]),
-            ("SBT", [0, 1])
+            ("SBT (7th Ed)", [0, 1])
         ]
 
-        # Apply boundary boxes and top axes to all subplots
         for i, (label, x_range) in enumerate(axes_labels, 1):
             fig.update_xaxes(
                 title_text=label, side="top", range=x_range,
-                showline=True, linewidth=1.5, linecolor='black', mirror=True, # BOX BOUNDARY
+                showline=True, linewidth=1.2, linecolor='black', mirror=True,
                 gridcolor='LightGray', gridwidth=0.5, row=1, col=i
             )
             if i == 6: fig.update_xaxes(showticklabels=False, row=1, col=6)
 
-        fig.update_yaxes(
-            title_text="Depth (m)", autorange="reversed", 
-            showline=True, linewidth=1.5, linecolor='black', mirror=True, # BOX BOUNDARY
-            gridcolor='LightGray', gridwidth=0.5, row=1, col=1
-        )
-        # Ensure other columns also have the Y-axis boundary lines
-        for i in range(2, 7):
-            fig.update_yaxes(showline=True, linewidth=1.5, linecolor='black', mirror=True, row=1, col=i)
+        for i in range(1, 7):
+            fig.update_yaxes(
+                autorange="reversed", showline=True, linewidth=1.2, linecolor='black', mirror=True,
+                gridcolor='LightGray', gridwidth=0.5, row=1, col=i,
+                title_text="Depth (m)" if i == 1 else ""
+            )
 
         fig.update_layout(
-            height=1000, template="plotly_white", showlegend=False,
+            height=1100, template="plotly_white", showlegend=False,
             font=dict(family="serif", size=10, color="black"),
-            margin=dict(t=100, b=40, l=60, r=40)
+            margin=dict(t=120, b=50, l=70, r=40)
         )
         
         st.plotly_chart(fig, use_container_width=True)
-        st.caption("Classification based on Robertson & Cabal (2022) CPT Guide 7th Edition.")
+        
+        st.markdown("""
+        **SBT Legend (Robertson & Cabal, 2022):**
+        | Color | Classification | Color | Classification |
+        | :--- | :--- | :--- | :--- |
+        | <span style='color:#FF0000'>■</span> | Clays: Silty Clay to Clay | <span style='color:#90EE90'>■</span> | Sand Mixtures: Silty Sand to Sandy Silt |
+        | <span style='color:#FFFF00'>■</span> | Silt Mixtures | <span style='color:#008000'>■</span> | Sands: Clean Sand to Silty Sand |
+        | <span style='color:#964B00'>■</span> | Organic Soils: Peat | <span style='color:#006400'>■</span> | Gravelly Sand to Dense Sand |
+        | <span style='color:#E6E6FA'>■</span> | Sensitive Fine-Grained | | |
+        """)
     else:
-        st.error("No data found.")
+        st.error("Data Parsing Error: Ensure the file contains a '#' delimited data section.")
 `
         },
       }, document.getElementById("root"));
