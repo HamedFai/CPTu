@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>CPTu Analyzer</title>
+    <title>CPTu 7th Ed Professional Analyzer</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.31.0/build/stlite.css" />
   </head>
   <body>
@@ -21,23 +21,23 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-def get_sbt_label(rf, qc_mpa):
-    # Simplified Robertson (1990) SBT logic for visualization
-    # Derived from Ic = ((3.47 - log10(qc/pa))^2 + (log10(Rf) + 1.22)^2)^0.5
-    # pa is atmospheric pressure (~0.1 MPa)
+def get_sbt_7th_ed(rf, qc_mpa):
+    """SBT Classification based on Robertson & Cabal (2022) 7th Ed."""
     try:
-        if qc_mpa <= 0: return "Unknown", "#FFFFFF"
-        qc_dim = qc_mpa / 0.1
-        ic = ((3.47 - np.log10(qc_dim))**2 + (np.log10(rf) + 1.22)**2)**0.5
+        if qc_mpa <= 0.001: return "Unknown", "#FFFFFF"
+        # Atmospheric pressure (pa) = 0.1 MPa
+        pa = 0.1
+        # Ic = ((3.47 - log10(qc/pa))^2 + (log10(Rf) + 1.22)^2)^0.5
+        ic = ((3.47 - np.log10(qc_mpa/pa))**2 + (np.log10(rf) + 1.22)**2)**0.5
         
-        if ic > 3.6: return "Organic/Peat", "#964B00"
-        if ic > 2.95: return "Clays", "#FF0000"
-        if ic > 2.6: return "Silt Mixtures", "#FFFF00"
-        if ic > 2.05: return "Sand Mixtures", "#90EE90"
-        if ic > 1.31: return "Sands", "#008000"
-        return "Gravelly Sand", "#006400"
+        if ic > 3.60: return "Organic Soils - Peat", "#964B00"
+        if ic > 2.95: return "Clays - Silty Clay to Clay", "#FF0000"
+        if ic > 2.60: return "Silt Mixtures - Clayey Silt to Silty Clay", "#FFFF00"
+        if ic > 2.05: return "Sand Mixtures - Silty Sand to Sandy Silt", "#90EE90"
+        if ic > 1.31: return "Sands - Clean Sand to Silty Sand", "#008000"
+        return "Gravelly Sand to Dense Sand", "#006400"
     except:
-        return "Sensitive Fine", "#E6E6FA"
+        return "Sensitive Fine-Grained", "#E6E6FA"
 
 def parse_cpt(content):
     data = []
@@ -54,70 +54,80 @@ def parse_cpt(content):
             except: continue
     df = pd.DataFrame(data)
     if not df.empty:
+        # Standard Calculations
         df['Rf'] = (df['FS'] / (df['QC'] * 1000)) * 100
         u0 = df['D'] * 9.81
         df['Bq'] = (df['U'] - u0) / (df['QC'] * 1000 - u0)
         
-        # Apply SBT Classification
-        sbt_data = [get_sbt_label(r, q) for r, q in zip(df['Rf'], df['QC'])]
-        df['SBT_Label'] = [x[0] for x in sbt_data]
-        df['SBT_Color'] = [x[1] for x in sbt_data]
-        
+        # 7th Ed SBT Mapping
+        sbt_results = [get_sbt_7th_ed(r, q) for r, q in zip(df['Rf'], df['QC'])]
+        df['SBT_Label'] = [x[0] for x in sbt_results]
+        df['SBT_Color'] = [x[1] for x in sbt_results]
     return df
 
-st.set_page_config(page_title="CPTu Marine Profile", layout="wide")
+st.set_page_config(layout="wide")
 st.markdown("<style>#MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>", unsafe_allow_html=True)
 
-st.title("CPTu Profile & Stratigraphy")
+st.title("CPTu Profiles (based on CPT Guide (7th edition))")
+
 uploaded_file = st.file_uploader("Upload .cpt file", type=['cpt', 'txt'])
 
 if uploaded_file:
     df = parse_cpt(uploaded_file.getvalue().decode('utf-8', errors='ignore'))
     if not df.empty:
-        # Create 6 columns (last one for SBT)
         fig = make_subplots(rows=1, cols=6, shared_yaxes=True, 
                             horizontal_spacing=0.015,
-                            column_widths=[0.17, 0.17, 0.17, 0.17, 0.17, 0.15])
+                            column_widths=[0.17, 0.17, 0.17, 0.12, 0.12, 0.08])
         
         depth = df['D'].tolist()
         
-        # Plot Traces
-        fig.add_trace(go.Scatter(x=df['QC'].tolist(), y=depth, name='qc', line=dict(color='black', width=1.2)), row=1, col=1)
-        fig.add_trace(go.Scatter(x=df['FS'].tolist(), y=depth, name='fs', line=dict(color='black', width=1.2)), row=1, col=2)
-        fig.add_trace(go.Scatter(x=df['U'].tolist(), y=depth, name='u2', line=dict(color='black', width=1.2)), row=1, col=3)
-        fig.add_trace(go.Scatter(x=df['Rf'].tolist(), y=depth, name='Rf', line=dict(color='black', width=1.2)), row=1, col=4)
-        fig.add_trace(go.Scatter(x=df['Bq'].tolist(), y=depth, name='Bq', line=dict(color='black', width=1.2)), row=1, col=5)
+        # Trace Definitions
+        fig.add_trace(go.Scatter(x=df['QC'].tolist(), y=depth, name='qc', line=dict(color='black', width=1)), row=1, col=1)
+        fig.add_trace(go.Scatter(x=df['FS'].tolist(), y=depth, name='fs', line=dict(color='black', width=1)), row=1, col=2)
+        fig.add_trace(go.Scatter(x=df['U'].tolist(), y=depth, name='u2', line=dict(color='black', width=1)), row=1, col=3)
+        fig.add_trace(go.Scatter(x=df['Rf'].tolist(), y=depth, name='Rf', line=dict(color='black', width=1)), row=1, col=4)
+        fig.add_trace(go.Scatter(x=df['Bq'].tolist(), y=depth, name='Bq', line=dict(color='black', width=1)), row=1, col=5)
         
-        # SBT Colored Bar
+        # SBT Column Logic
         for i in range(len(df)-1):
             fig.add_shape(type="rect", x0=0, x1=1, y0=df['D'].iloc[i], y1=df['D'].iloc[i+1],
                           fillcolor=df['SBT_Color'].iloc[i], line_width=0, row=1, col=6)
 
-        axes_config = [
-            ("q<sub>c</sub> (MPa)", [0, max(df['QC'])*1.1]),
-            ("f<sub>s</sub> (kPa)", [0, max(df['FS'])*1.2]),
-            ("u<sub>2</sub> (kPa)", [0, max(df['U'])*1.1]),
+        axes_labels = [
+            ("q<sub>c</sub> (MPa)", [0, max(df['QC'])*1.2]),
+            ("f<sub>s</sub> (kPa)", [0, max(df['FS'])*1.3]),
+            ("u<sub>2</sub> (kPa)", [0, max(df['U'])*1.2]),
             ("R<sub>f</sub> (%)", [0, 8]),
             ("B<sub>q</sub>", [-0.2, 1.2]),
             ("SBT", [0, 1])
         ]
 
-        for i, (label, x_range) in enumerate(axes_config, 1):
-            fig.update_xaxes(title_text=label, side="top", range=x_range,
-                             showline=True, linewidth=1, linecolor='black', mirror=True,
-                             gridcolor='LightGray', gridwidth=0.5, row=1, col=i)
+        # Apply boundary boxes and top axes to all subplots
+        for i, (label, x_range) in enumerate(axes_labels, 1):
+            fig.update_xaxes(
+                title_text=label, side="top", range=x_range,
+                showline=True, linewidth=1.5, linecolor='black', mirror=True, # BOX BOUNDARY
+                gridcolor='LightGray', gridwidth=0.5, row=1, col=i
+            )
             if i == 6: fig.update_xaxes(showticklabels=False, row=1, col=6)
 
-        fig.update_yaxes(title_text="Depth (m)", autorange="reversed", 
-                         showline=True, linewidth=1, linecolor='black', mirror=True,
-                         gridcolor='LightGray', gridwidth=0.5, row=1, col=1)
+        fig.update_yaxes(
+            title_text="Depth (m)", autorange="reversed", 
+            showline=True, linewidth=1.5, linecolor='black', mirror=True, # BOX BOUNDARY
+            gridcolor='LightGray', gridwidth=0.5, row=1, col=1
+        )
+        # Ensure other columns also have the Y-axis boundary lines
+        for i in range(2, 7):
+            fig.update_yaxes(showline=True, linewidth=1.5, linecolor='black', mirror=True, row=1, col=i)
 
-        fig.update_layout(height=1000, template="plotly_white", showlegend=False,
-                          font=dict(family="Arial, sans-serif", size=11, color="black"),
-                          margin=dict(t=120, b=50, l=80, r=40))
+        fig.update_layout(
+            height=1000, template="plotly_white", showlegend=False,
+            font=dict(family="serif", size=10, color="black"),
+            margin=dict(t=100, b=40, l=60, r=40)
+        )
         
         st.plotly_chart(fig, use_container_width=True)
-        st.info("Legend: 🟥 Clays | 🟨 Silts | 🟩 Sands | 🟫 Organic/Peat")
+        st.caption("Classification based on Robertson & Cabal (2022) CPT Guide 7th Edition.")
     else:
         st.error("No data found.")
 `
