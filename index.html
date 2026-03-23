@@ -35,28 +35,38 @@ def parse_cpt(content):
             except: continue
     return pd.DataFrame(data)
 
-st.title("⚓ Marine CPTu Analyzer")
+st.title("CPTu Analyser")
 uploaded_file = st.file_uploader("Upload .cpt file", type=['cpt', 'txt'])
 
 if uploaded_file:
     df = parse_cpt(uploaded_file.getvalue().decode('utf-8', errors='ignore'))
     if not df.empty:
+        # Calculations
         df['Rf'] = (df['FS'] / (df['QC'] * 1000)) * 100
         u0 = df['D'] * 9.81
         df['Bq'] = (df['U'] - u0) / (df['QC'] * 1000 - u0)
         
+        # Plotting - Using .tolist() to fix the PyArrow/Narwhals error
         fig = make_subplots(rows=1, cols=5, shared_yaxes=True, 
                             subplot_titles=("qc", "fs", "u2", "Rf", "Bq"))
         
-        fig.add_trace(go.Scatter(x=df['QC'], y=df['D'], name='qc'), row=1, col=1)
-        fig.add_trace(go.Scatter(x=df['FS'], y=df['D'], name='fs'), row=1, col=2)
-        fig.add_trace(go.Scatter(x=df['U'], y=df['D'], name='u2'), row=1, col=3)
-        fig.add_trace(go.Scatter(x=df['Rf'], y=df['D'], name='Rf'), row=1, col=4)
-        fig.add_trace(go.Scatter(x=df['Bq'], y=df['D'], name='Bq'), row=1, col=5)
+        depth = df['D'].tolist()
         
-        fig.update_yaxes(autorange="reversed")
-        fig.update_layout(height=800, template="plotly_white")
+        fig.add_trace(go.Scatter(x=df['QC'].tolist(), y=depth, name='qc'), row=1, col=1)
+        fig.add_trace(go.Scatter(x=df['FS'].tolist(), y=depth, name='fs'), row=1, col=2)
+        fig.add_trace(go.Scatter(x=df['U'].tolist(), y=depth, name='u2'), row=1, col=3)
+        fig.add_trace(go.Scatter(x=df['Rf'].tolist(), y=depth, name='Rf'), row=1, col=4)
+        fig.add_trace(go.Scatter(x=df['Bq'].tolist(), y=depth, name='Bq'), row=1, col=5)
+        
+        fig.update_yaxes(autorange="reversed", title="Depth (m)")
+        fig.update_layout(height=800, template="plotly_white", showlegend=False)
+        
+        # Set specific ranges for geotechnical clarity
+        fig.update_xaxes(range=[0, 10], row=1, col=4)
+        fig.update_xaxes(range=[-0.2, 1.2], row=1, col=5)
+        
         st.plotly_chart(fig, use_container_width=True)
+        st.dataframe(df)
     else:
         st.error("No data found.")
 `
