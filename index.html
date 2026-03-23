@@ -74,13 +74,10 @@ Soil Behavior Type Index ($I_c$).
 uploaded_file = st.file_uploader("Select CPT Data File (.cpt, .txt)", type=['cpt', 'txt'])
 
 if uploaded_file:
-    # Extract Location ID from filename (removing extension)
     location_id = os.path.splitext(uploaded_file.name)[0]
-    
     df = parse_cpt(uploaded_file.getvalue().decode('utf-8', errors='ignore'))
     
     if not df.empty:
-        # Display Location ID prominently
         st.markdown(f"## Location ID: {location_id}")
         
         fig = make_subplots(rows=1, cols=6, shared_yaxes=True, 
@@ -131,15 +128,17 @@ if uploaded_file:
         
         st.plotly_chart(fig, use_container_width=True)
         
-        st.markdown("""
-        **SBT Legend (Robertson & Cabal, 2022):**
-        | Color | Classification | Color | Classification |
-        | :--- | :--- | :--- | :--- |
-        | <span style='color:#FF0000'>■</span> | Clays: Silty Clay to Clay | <span style='color:#90EE90'>■</span> | Sand Mixtures: Silty Sand to Sandy Silt |
-        | <span style='color:#FFFF00'>■</span> | Silt Mixtures | <span style='color:#008000'>■</span> | Sands: Clean Sand to Silty Sand |
-        | <span style='color:#964B00'>■</span> | Organic Soils: Peat | <span style='color:#006400'>■</span> | Gravelly Sand to Dense Sand |
-        | <span style='color:#E6E6FA'>■</span> | Sensitive Fine-Grained | | |
-        """)
+        st.markdown("**SBT Legend (Robertson & Cabal, 2022):**")
+        col_l, col_r = st.columns(2)
+        with col_l:
+            st.write("🟥 Clays: Silty Clay to Clay")
+            st.write("🟨 Silt Mixtures")
+            st.write("🟫 Organic Soils: Peat")
+            st.write("🔮 Sensitive Fine-Grained")
+        with col_r:
+            st.write("🟩 Sand Mixtures: Silty Sand to Sandy Silt")
+            st.write("🌳 Sands: Clean Sand to Silty Sand")
+            st.write("🌲 Gravelly Sand to Dense Sand")
     else:
         st.error("Data Parsing Error: Ensure the file contains a '#' delimited data section.")
 `
