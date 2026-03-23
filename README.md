@@ -4,7 +4,7 @@ An interactive, browser-based tool for visualizing Piezocone Penetration Test (C
 
 **No installation required.** This application runs entirely in your web browser using WebAssembly (via stlite/Pyodide).
 
-## Live Demo
+## Live
 [https://hamedfai.github.io/CPTu/](https://hamedfai.github.io/CPTu/)
 
 ## Features
