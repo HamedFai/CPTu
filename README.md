@@ -8,7 +8,7 @@ An interactive, browser-based tool for visualizing Piezocone Penetration Test (C
 [REPLACE THIS WITH YOUR GITHUB PAGES URL]
 *(e.g., https://yourusername.github.io/your-repo-name/)*
 
-## 🛠 Features
+## Features
 * **Zero Setup:** No Python or library installation needed on the user's machine.
 * **Geotechnical Visualization:** Automatic generation of three-panel subplots:
     * **QC (MPa):** Cone Tip Resistance
