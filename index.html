@@ -28,15 +28,14 @@ def get_sbt_7th_ed(rf, qc_mpa):
         pa = 0.1
         ic = ((3.47 - np.log10(qc_mpa/pa))**2 + (np.log10(rf) + 1.22)**2)**0.5
         
-        # Professional Hex Colors for Geotechnical Logs
-        if ic > 3.60: return "Organic Soils - Peat", "#964B00"        # Brown
-        if ic > 2.95: return "Clays", "#FF0000"                      # Red
-        if ic > 2.60: return "Silt Mixtures", "#FFFF00"             # Yellow
-        if ic > 2.05: return "Sand Mixtures", "#90EE90"             # Light Green
-        if ic > 1.31: return "Sands", "#008000"                      # Green
-        return "Gravelly Sand to Dense Sand", "#006400"              # Dark Green
+        if ic > 3.60: return "Organic Soils - Peat", "#964B00"
+        if ic > 2.95: return "Clays", "#FF0000"
+        if ic > 2.60: return "Silt Mixtures", "#FFFF00"
+        if ic > 2.05: return "Sand Mixtures", "#90EE90"
+        if ic > 1.31: return "Sands", "#008000"
+        return "Gravelly Sand to Dense Sand", "#006400"
     except:
-        return "Sensitive Fine-Grained", "#E6E6FA"                  # Lavender
+        return "Sensitive Fine-Grained", "#E6E6FA"
 
 def parse_cpt(content):
     data = []
@@ -82,7 +81,6 @@ if uploaded_file:
     if not df.empty:
         st.markdown(f"## Location ID: {location_id}")
         
-        # Aligned spacing and column widths
         fig = make_subplots(rows=1, cols=6, shared_yaxes=True, 
                             horizontal_spacing=0.015,
                             column_widths=[0.17, 0.17, 0.17, 0.13, 0.13, 0.08])
@@ -108,13 +106,12 @@ if uploaded_file:
             ("SBT (7th Ed)", [0, 1])
         ]
 
-        # Uniform standoff to fix label alignment issues
         for i, (label, x_range) in enumerate(axes_labels, 1):
             fig.update_xaxes(
                 title_text=label, side="top", range=x_range,
                 showline=True, linewidth=1.2, linecolor='black', mirror=True,
                 gridcolor='LightGray', gridwidth=0.5, row=1, col=i,
-                title_standoff=15
+                title_standoff=35
             )
             if i == 6: fig.update_xaxes(showticklabels=False, row=1, col=6)
 
@@ -128,23 +125,42 @@ if uploaded_file:
         fig.update_layout(
             height=1100, template="plotly_white", showlegend=False,
             font=dict(family="serif", size=10, color="black"),
-            margin=dict(t=150, b=50, l=70, r=40)
+            margin=dict(t=180, b=50, l=70, r=40)
         )
         
         st.plotly_chart(fig, use_container_width=True)
         
-        # Legend using pure text and descriptive labels
-        st.markdown("### Soil Behavior Type (SBT) Legend")
-        l_col, r_col = st.columns(2)
-        with l_col:
-            st.markdown("- **Red:** Clays (Silty Clay to Clay)")
-            st.markdown("- **Yellow:** Silt Mixtures (Clayey Silt to Silty Clay)")
-            st.markdown("- **Brown:** Organic Soils (Peat)")
-            st.markdown("- **Lavender:** Sensitive Fine-Grained")
-        with r_col:
-            st.markdown("- **Light Green:** Sand Mixtures (Silty Sand to Sandy Silt)")
-            st.markdown("- **Green:** Sands (Clean Sand to Silty Sand)")
-            st.markdown("- **Dark Green:** Gravelly Sand to Dense Sand")
+        st.markdown("### Stratigraphic Classification (Robertson & Cabal, 2022)")
+        
+        # Color-coded legend using standard markdown table with colored blocks
+        legend_html = \"\"\"
+        <table style='width:100%; border-collapse: collapse; font-family: serif; font-size: 13px;'>
+          <tr>
+            <td style='width:20px; background-color:#FF0000; border: 1px solid black;'></td>
+            <td style='padding-left: 10px;'>Clays: Silty Clay to Clay</td>
+            <td style='width:20px; background-color:#90EE90; border: 1px solid black;'></td>
+            <td style='padding-left: 10px;'>Sand Mixtures: Silty Sand to Sandy Silt</td>
+          </tr>
+          <tr>
+            <td style='width:20px; background-color:#FFFF00; border: 1px solid black;'></td>
+            <td style='padding-left: 10px;'>Silt Mixtures: Clayey Silt to Silty Clay</td>
+            <td style='width:20px; background-color:#008000; border: 1px solid black;'></td>
+            <td style='padding-left: 10px;'>Sands: Clean Sand to Silty Sand</td>
+          </tr>
+          <tr>
+            <td style='width:20px; background-color:#964B00; border: 1px solid black;'></td>
+            <td style='padding-left: 10px;'>Organic Soils: Peat</td>
+            <td style='width:20px; background-color:#006400; border: 1px solid black;'></td>
+            <td style='padding-left: 10px;'>Gravelly Sand to Dense Sand</td>
+          </tr>
+          <tr>
+            <td style='width:20px; background-color:#E6E6FA; border: 1px solid black;'></td>
+            <td style='padding-left: 10px;'>Sensitive Fine-Grained</td>
+            <td></td><td></td>
+          </tr>
+        </table>
+        \"\"\"
+        st.markdown(legend_html, unsafe_allow_html=True)
     else:
         st.error("Data Parsing Error: Ensure the file contains a '#' delimited data section.")
 `
