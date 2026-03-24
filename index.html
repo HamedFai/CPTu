@@ -37,14 +37,16 @@ def get_sbt_7th_ed(rf, qc_mpa):
         if qc_mpa <= 0.001: return "Unknown", "#FFFFFF"
         pa = 0.1
         ic = ((3.47 - np.log10(qc_mpa/pa))**2 + (np.log10(rf) + 1.22)**2)**0.5
-        if ic > 3.60: return "Organic Soils - Peat", "#964B00"
-        if ic > 2.95: return "Clays", "#FF0000"
-        if ic > 2.60: return "Silt Mixtures", "#FFFF00"
-        if ic > 2.05: return "Sand Mixtures", "#90EE90"
-        if ic > 1.31: return "Sands", "#008000"
-        return "Gravelly Sand to Dense Sand", "#006400"
+        
+        # Professional Geotechnical Color Palette
+        if ic > 3.60: return "Organic Soils - Peat", "#964B00"        # Brown
+        if ic > 2.95: return "Clays", "#FF0000"                      # Red
+        if ic > 2.60: return "Silt Mixtures", "#FFFF00"             # Yellow
+        if ic > 2.05: return "Sand Mixtures", "#90EE90"             # Light Green
+        if ic > 1.31: return "Sands", "#008000"                      # Green
+        return "Gravelly Sand to Dense Sand", "#006400"              # Dark Green
     except:
-        return "Sensitive Fine-Grained", "#E6E6FA"
+        return "Sensitive Fine-Grained", "#E6E6FA"                  # Lavender
 
 def parse_cpt(content):
     data = []
@@ -76,8 +78,8 @@ st.title("Quantitative Analysis and Stratigraphic Profiling of Marine Sediments 
 
 st.markdown("""
 ### Background and Methodology
-This tool facilitates interpreted stratigraphic profiling based on the **Robertson & Cabal (2022) 7th Edition CPT Guide**. 
-The Soil Behavior Type Index ($I_c$) is calculated using non-normalized parameters.
+Interpretation follows the **Robertson & Cabal (2022) 7th Edition CPT Guide**. 
+The Soil Behavior Type Index ($I_c$) is derived from non-normalized tip resistance and friction ratio.
 """)
 
 uploaded_file = st.file_uploader("Select CPT Data File", type=['cpt', 'txt'])
@@ -89,8 +91,9 @@ if uploaded_file:
     if not df.empty:
         st.markdown(f"## Location ID: {location_id}")
         
-        # Define exact column positions for the titles
-        col_x_positions = [0.08, 0.25, 0.42, 0.59, 0.74, 0.88]
+        # Hard-coded X-coordinates for the paper-referenced labels
+        # Adjusted slightly to center over each subplot
+        col_x = [0.08, 0.25, 0.42, 0.58, 0.73, 0.88]
         titles = ["q<sub>c</sub> (MPa)", "f<sub>s</sub> (kPa)", "u<sub>2</sub> (kPa)", "R<sub>f</sub> (%)", "B<sub>q</sub>", "SBT (7th Ed)"]
 
         fig = make_subplots(rows=1, cols=6, shared_yaxes=True, 
@@ -117,9 +120,9 @@ if uploaded_file:
             fig.update_yaxes(autorange="reversed", showline=True, linewidth=1.2, 
                              linecolor='black', mirror=True, gridcolor='LightGray', row=1, col=i)
             
-            # Add manually positioned titles for perfect alignment
+            # TITLE LOCK: Uses y=1.05 anchored to the top of the paper (not the axis)
             fig.add_annotation(
-                text=titles[i-1], x=col_x_positions[i-1], y=1.08, 
+                text=titles[i-1], x=col_x[i-1], y=1.05, 
                 xref="paper", yref="paper", showarrow=False,
                 font=dict(family="serif", size=12, color="black"),
                 yanchor="bottom"
@@ -129,16 +132,16 @@ if uploaded_file:
             height=1100, paper_bgcolor='white', plot_bgcolor='white',
             template="plotly_white", showlegend=False,
             font=dict(family="serif", size=10, color="black"),
-            margin=dict(t=150, b=50, l=70, r=40)
+            margin=dict(t=120, b=50, l=70, r=40)
         )
         
         st.plotly_chart(fig, use_container_width=True)
         
-        st.markdown("### Stratigraphic Classification Table")
+        st.markdown("### Stratigraphic Classification")
         legend_html = \"\"\"
         <table style='width:100%; border-collapse: collapse; font-family: serif; color: black; background-color: white; border: 1px solid black;'>
           <tr style='border-bottom: 1px solid black;'>
-            <td style='width:30px; background-color:#FF0000; border-right: 1px solid black;'></td>
+            <td style='width:30px; height:20px; background-color:#FF0000; border-right: 1px solid black;'></td>
             <td style='padding: 5px;'>Clays: Silty Clay to Clay</td>
             <td style='width:30px; background-color:#90EE90; border-right: 1px solid black; border-left: 1px solid black;'></td>
             <td style='padding: 5px;'>Sand Mixtures: Silty Sand to Sandy Silt</td>
